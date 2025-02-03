@@ -287,6 +287,37 @@ async function connectWallet() {
     }
 }
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(() => {
+        const button = document.getElementById("CONNECT"); // Tu botón en 3D Vista
+
+        if (button) {
+            button.addEventListener("click", connectWallet);
+            console.log("Botón de conexión vinculado correctamente.");
+        } else {
+            console.error("No se encontró el botón con ID 'CONNECT'.");
+        }
+    }, 2000); // Esperamos 2 segundos por si tarda en cargar
+});
+
+async function connectWallet() {
+    if (window.ethereum) {
+        try {
+            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+            const walletAddress = accounts[0]; // Guarda la primera cuenta
+
+            // Muestra la dirección en la consola y en la web
+            console.log("Wallet conectada:", walletAddress);
+            document.body.insertAdjacentHTML("beforeend", `<p>Conectado: ${walletAddress.substring(0, 6)}...</p>`);
+        } catch (error) {
+            console.error("Error al conectar la wallet:", error);
+        }
+    } else {
+        alert("MetaMask no detectado. Instálalo para continuar.");
+    }
+}
+</script>
 
 </body>
 </html>
