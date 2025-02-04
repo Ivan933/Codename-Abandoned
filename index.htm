@@ -11,6 +11,30 @@
     <script src="script.js?v=1738683456665"></script>
 
     <style>
+        /* Maintain your original button style */
+        #wallet-button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.4em;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            transition: all 0.4s ease;
+            z-index: 10000;
+        }
+
+        #wallet-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
         /* Fullscreen fixes */
         :fullscreen #viewer {
             width: 100% !important;
@@ -27,31 +51,6 @@
             overflow: hidden;
             background: #000;
         }
-
-        /* AI Ghost NPC positioning */
-        #ghost-npc {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            opacity: 0.8;
-            z-index: 10000;
-            pointer-events: auto;
-        }
-
-        /* Fullscreen button styling */
-        .fullscreen-button {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            padding: 10px;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            border: 1px solid white;
-            cursor: pointer;
-            z-index: 10000;
-        }
     </style>
 </head>
 <body>
@@ -64,35 +63,60 @@
     <!-- Virtual Tour Viewer -->
     <div id="viewer"></div>
 
-    <!-- AI Ghost NPC -->
-    <img id="ghost-npc" src="ghost.png" width="100" alt="Ghost NPC" style="display: none;">
-    <div id="ghost-dialogue-box">
-        <p id="ghost-dialogue">...</p>
-    </div>
-
     <script>
-        // Fullscreen handling
-        function handleFullScreen() {
-            const viewer = document.getElementById("viewer");
-            if (viewer.requestFullscreen) {
-                viewer.requestFullscreen();
-            } else if (viewer.mozRequestFullScreen) {
-                viewer.mozRequestFullScreen();
-            } else if (viewer.webkitRequestFullscreen) {
-                viewer.webkitRequestFullscreen();
-            } else if (viewer.msRequestFullscreen) {
-                viewer.msRequestFullscreen();
-            }
+        let player;
+        let isInitialized = false;
 
-            // Refresh panorama after fullscreen change
-            setTimeout(() => {
-                if (player && player.setSize) {
-                    player.setSize(window.innerWidth, window.innerHeight);
-                }
-            }, 100);
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('wallet-button').onclick = handleWalletConnection;
+        });
+
+        async function handleWalletConnection() {
+            try {
+                // Check for any Ethereum provider
+                const provider = await detectProvider();
+                
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                await requestSignature(accounts[0]);
+                
+                initializeTour();
+                fadeOutPreloader();
+
+            } catch (error) {
+                alert(`Connection Failed: ${error.message}`);
+                console.error('Wallet Error:', error);
+            }
         }
 
-        // Initialize tour with proper fullscreen handling
+        async function detectProvider() {
+            if (window.ethereum) return window.ethereum;
+            
+            // Basic WalletConnect fallback
+            const connector = new WalletConnect({
+                bridge: "https://bridge.walletconnect.org",
+                qrcodeModal: QRCodeModal,
+            });
+
+            if (!connector.connected) {
+                await connector.createSession();
+            }
+
+            return new Promise((resolve, reject) => {
+                connector.on("connect", (error) => {
+                    if (error) reject(error);
+                    resolve(connector);
+                });
+            });
+        }
+
+        async function requestSignature(address) {
+            const message = `Authorize Access - ${Date.now()}`;
+            return window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, address]
+            });
+        }
+
         function initializeTour() {
             if (isInitialized) return;
             
@@ -105,77 +129,7 @@
                 window.tdvplayer = player = TDV.PlayerAPI.create(settings);
                 isInitialized = true;
 
-                // Add fullscreen button handler
+                // Handle fullscreen properly
                 player.bind('click', (event) => {
                     if (event.targetType === 'fullscreen') {
-                        handleFullScreen();
-                    }
-                });
-
-                // Show ghost NPC after tour loads
-                player.bind('stateChange', (event) => {
-                    if (event.name === 'begin') {
-                        document.getElementById("ghost-npc").style.display = "block";
-                    }
-                });
-
-            } catch (error) {
-                console.error('TDV Initialization Error:', error);
-                alert('Virtual environment failed to initialize');
-            }
-        }
-
-        // Improved AI interaction
-        async function interactWithGhost() {
-            try {
-                const dialogueBox = document.getElementById("ghost-dialogue-box");
-                dialogueBox.style.display = "block";
-                dialogueBox.style.opacity = "0";
-                
-                // Animate dialogue box
-                fadeIn(dialogueBox);
-                
-                const aiResponse = await fetchGhostResponse();
-                document.getElementById("ghost-dialogue").innerText = aiResponse;
-
-                setTimeout(() => {
-                    fadeOut(dialogueBox);
-                }, 5000);
-
-            } catch (error) {
-                console.error("Ghost interaction failed:", error);
-            }
-        }
-
-        // Animation helpers
-        function fadeIn(element) {
-            let opacity = 0;
-            element.style.opacity = opacity;
-            const timer = setInterval(() => {
-                opacity += 0.1;
-                element.style.opacity = opacity;
-                if (opacity >= 1) clearInterval(timer);
-            }, 50);
-        }
-
-        function fadeOut(element) {
-            let opacity = 1;
-            const timer = setInterval(() => {
-                opacity -= 0.1;
-                element.style.opacity = opacity;
-                if (opacity <= 0) {
-                    clearInterval(timer);
-                    element.style.display = "none";
-                }
-            }, 50);
-        }
-
-        // Window resize handler
-        window.addEventListener('resize', () => {
-            if (player && player.setSize) {
-                player.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-    </script>
-</body>
-</html>
+                        handle
