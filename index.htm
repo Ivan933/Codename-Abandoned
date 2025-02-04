@@ -69,8 +69,9 @@
         }
 
         #preloadContainer img {
-            width: 150px;
-            height: 150px;
+            width: 200px;
+            height: autopx;
+             max-width: 80%; /* Responsive */
         }
 
         /* Wallet Button */
@@ -129,10 +130,15 @@
             setTimeout(() => { preloadContainer.style.display = "none"; }, 500);
         }
 
-        function onLoad() {
-            document.body.addEventListener("click", onBodyClick);
-            document.body.addEventListener("touchend", onBodyClick);
-        }
+       function onLoad() {
+    document.body.addEventListener("click", startTour, { once: true });
+    document.body.addEventListener("touchend", startTour, { once: true });
+}
+
+function startTour() {
+    console.log("🟢 Click detected! Loading tour...");
+    loadTour();
+}
 
         function onBodyClick() {
             document.body.removeEventListener("click", onBodyClick);
@@ -141,25 +147,30 @@
         }
 
         // Wallet Connection
-        document.getElementById("wallet-button").addEventListener("click", connectWallet);
+        document.getElementById("wallet-button").onclick = connectWallet;
 
-        async function connectWallet() {
-            if (window.ethereum) {
-                try {
-                    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-                    console.log("✅ Wallet Connected:", accounts[0]);
+     async function connectWallet() {
+    if (typeof window.ethereum !== "undefined") {
+        try {
+            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+            console.log("✅ Wallet Connected:", accounts[0]);
 
-                    // Display wallet address
-                    const walletInfo = document.createElement("p");
-                    walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
-                    document.body.appendChild(walletInfo);
-                } catch (error) {
-                    console.error("❌ Wallet Connection Failed:", error);
-                }
-            } else {
-                alert("MetaMask not detected! Please install it.");
+            // Show wallet address
+            let walletInfo = document.getElementById("wallet-info");
+            if (!walletInfo) {
+                walletInfo = document.createElement("p");
+                walletInfo.id = "wallet-info";
+                document.body.appendChild(walletInfo);
             }
+            walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+        } catch (error) {
+            console.error("❌ Wallet Connection Failed:", error);
         }
+    } else {
+        alert("❌ MetaMask not detected! Please install it.");
+    }
+}
+
     </script>
 </body>
 </html>
