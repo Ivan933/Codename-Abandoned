@@ -37,36 +37,14 @@
             animation: eye-pulse 2s ease-in-out infinite;
         }
 
-        /* Cyberpunk-style Wallet Button */
-        #wallet-button {
+        /* Virtual Tour Viewer */
+        #viewer {
             position: absolute;
-            bottom: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 40px;
-            background: transparent;
-            color: #fff;
-            border: 2px solid #fff;
-            border-radius: 30px;
-            font-family: 'Courier New', monospace;
-            font-size: 1.4em;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10000;
-            transition: all 0.4s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-        }
-
-        #wallet-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-            transform: translateX(-50%) scale(1.05);
-        }
-
-        #wallet-button:active {
-            transform: translateX(-50%) scale(0.95);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
 
         @keyframes eye-pulse {
@@ -115,7 +93,6 @@
 
                 initializeTour();
                 fadeOutPreloader();
-                enterFullscreen();
 
             } catch (error) {
                 alert(`Security Protocol Failed: ${error.message}`);
@@ -166,7 +143,6 @@
                 player.bind('stateChange', (event) => {
                     if (event.name === 'begin') {
                         fadeOutPreloader();
-                        enterFullscreen();
                     }
                 });
 
@@ -185,21 +161,6 @@
                 }, 500);
             }
         }
-
-        function enterFullscreen() {
-            const viewer = document.getElementById('viewer');
-            if (viewer.requestFullscreen) {
-                viewer.requestFullscreen();
-            } else if (viewer.mozRequestFullScreen) {
-                viewer.mozRequestFullScreen();
-            } else if (viewer.webkitRequestFullscreen) {
-                viewer.webkitRequestFullscreen();
-            } else if (viewer.msRequestFullscreen) {
-                viewer.msRequestFullscreen();
-            }
-        }
     </script>
 </body>
 </html>
-
-
