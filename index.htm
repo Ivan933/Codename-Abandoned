@@ -45,6 +45,13 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            background: #000;
+        }
+
+        /* Fullscreen Mode Fix */
+        .fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
         }
 
         @keyframes eye-pulse {
@@ -69,6 +76,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wallet-button').onclick = handleWalletConnection;
+            document.addEventListener("fullscreenchange", handleFullScreenChange);
         });
 
         async function handleWalletConnection() {
@@ -161,6 +169,29 @@
                 }, 500);
             }
         }
+
+        function handleFullScreenChange() {
+            const viewer = document.getElementById("viewer");
+            if (document.fullscreenElement) {
+                viewer.classList.add("fullscreen");
+            } else {
+                viewer.classList.remove("fullscreen");
+            }
+        }
+
+        function goFullScreen() {
+            const viewer = document.getElementById("viewer");
+            if (viewer.requestFullscreen) {
+                viewer.requestFullscreen();
+            } else if (viewer.mozRequestFullScreen) { // Firefox
+                viewer.mozRequestFullScreen();
+            } else if (viewer.webkitRequestFullscreen) { // Chrome, Safari, and Opera
+                viewer.webkitRequestFullscreen();
+            } else if (viewer.msRequestFullscreen) { // IE/Edge
+                viewer.msRequestFullscreen();
+            }
+        }
     </script>
 </body>
 </html>
+
