@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Tour</title>
 
+    <!-- Add WalletConnect CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js"></script>
+
     <style>
         /* Existing styles for wallet info */
         #wallet-info {
@@ -32,10 +35,11 @@
             gap: 20px;
         }
 
+        /* Fullscreen loading gif */
         #preloadContainer img {
-            width: 150px; /* Adjust size of loading gif */
-            height: 150px;
-            animation: rotate 2s linear infinite; /* Optional: Add a rotating effect */
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Maintain aspect ratio */
         }
 
         /* Button styling */
@@ -63,11 +67,6 @@
             font-size: 1.2em;
             margin-bottom: 10px; /* Space between text and button */
         }
-
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body onload="onLoad()">
@@ -86,38 +85,80 @@
         let isInitialized = false;
         let isWalletConnected = false;
 
+        let provider;
+
         // Modified initialization flow
         function onLoad() {
-            // Only show wallet connection UI
+            // Show the Connect Wallet button
             document.getElementById("wallet-button").onclick = connectWallet;
         }
 
         async function connectWallet() {
+            // Check if MetaMask is available
             if (typeof window.ethereum !== "undefined") {
+                // Use MetaMask
+                provider = window.ethereum;
                 try {
-                    const accounts = await window.ethereum.request({ 
-                        method: "eth_requestAccounts" 
+                    const accounts = await provider.request({
+                        method: "eth_requestAccounts"
                     });
-                    
-                    // Store connection state
-                    isWalletConnected = true;
-                    console.log("✅ Wallet Connected:", accounts[0]);
-
-                    // Show wallet info
-                    const walletInfo = document.createElement("div");
-                    walletInfo.id = "wallet-info";
-                    walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
-                    document.body.appendChild(walletInfo);
-
-                    // Start the tour after connection
-                    initializeTour();
-
+                    onWalletConnectSuccess(accounts);
                 } catch (error) {
-                    console.error("❌ Wallet Connection Failed:", error);
-                    alert("Wallet connection failed. Please try again.");
+                    handleWalletError(error);
                 }
             } else {
-                alert("Please install MetaMask to access this content!");
+                // Fallback to WalletConnect if MetaMask is not available
+                const walletConnectProvider = new WalletConnectProvider({
+                    infuraId: "YOUR_INFURA_PROJECT_ID" // You need to use your own Infura project ID
+                });
+
+                provider = walletConnectProvider;
+
+                try {
+                    // Enable the provider (this opens a QR code for the user to scan with their mobile wallet)
+                    await provider.enable();
+
+                    // Use WalletConnect to get the accounts
+                    const accounts = await provider.request({
+                        method: "eth_requestAccounts"
+                    });
+
+                    onWalletConnectSuccess(accounts);
+                } catch (error) {
+                    handleWalletError(error);
+                }
+            }
+        }
+
+        // Handle successful wallet connection
+        function onWalletConnectSuccess(accounts) {
+            isWalletConnected = true;
+            console.log("✅ Wallet Connected:", accounts[0]);
+
+            // Show wallet info
+            const walletInfo = document.createElement("div");
+            walletInfo.id = "wallet-info";
+            walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+            document.body.appendChild(walletInfo);
+
+            // Start the tour after connection
+            initializeTour();
+        }
+
+        // Handle wallet connection errors
+        function handleWalletError(error) {
+            console.error("❌ Wallet Connection Failed:", error);
+
+            // Improved error handling
+            if (error.code === 4001) {
+                // User rejected the connection request
+                alert("Wallet connection request was rejected. Please try again.");
+            } else if (error.code === -32002) {
+                // Already waiting for user action (MetaMask pop-up is open)
+                alert("A wallet connection request is already pending. Please approve it in your wallet.");
+            } else {
+                // General error
+                alert("An error occurred while connecting your wallet. Please check your MetaMask or try again.");
             }
         }
 
@@ -152,3 +193,4 @@
     </script>
 </body>
 </html>
+
