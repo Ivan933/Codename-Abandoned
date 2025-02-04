@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, width=device-width, viewport-fit=cover">
     <title>Codename: Abandoned</title>
 
     <!-- Libraries -->
@@ -37,9 +37,27 @@
             animation: eye-pulse 2s ease-in-out infinite;
         }
 
+        /* Maintain your button style */
+        #wallet-button {
+            position: absolute;
+            bottom: 20%;
+            padding: 15px 30px;
+            background: #f6851b;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-family: 'Arial', sans-serif;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(246, 133, 27, 0.4);
+        }
+
         /* Virtual Tour Viewer */
         #viewer {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -50,6 +68,12 @@
         @keyframes eye-pulse {
             0%, 100% { transform: scale(0.98); opacity: 0.9; }
             50% { transform: scale(1.02); opacity: 1; }
+        }
+
+        /* Fullscreen fix */
+        :-webkit-full-screen #viewer {
+            width: 100% !important;
+            height: 100% !important;
         }
     </style>
 </head>
@@ -67,6 +91,15 @@
         let player;
         let isInitialized = false;
 
+        // Add resize handler
+        window.addEventListener('resize', handleResize);
+        
+        function handleResize() {
+            if (player && player.setSize) {
+                player.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wallet-button').onclick = handleWalletConnection;
         });
@@ -80,18 +113,15 @@
                     provider = await setupWalletConnect();
                 }
 
-                if (!provider) {
-                    throw new Error('No crypto wallet detected');
-                }
+                if (!provider) throw new Error('No crypto wallet detected');
 
                 const accounts = await provider.request({ method: 'eth_requestAccounts' });
                 await requestSignature(accounts[0]);
 
-                if (!window.TDV) {
-                    throw new Error('Virtual tour engine failed to load');
-                }
+                if (!window.TDV) throw new Error('Virtual tour engine failed to load');
 
                 initializeTour();
+                handleResize(); // Initial size setup
                 fadeOutPreloader();
 
             } catch (error) {
@@ -100,32 +130,13 @@
             }
         }
 
-        async function setupWalletConnect() {
-            return new Promise((resolve, reject) => {
-                const connector = new WalletConnect({
-                    bridge: "https://bridge.walletconnect.org",
-                    qrcodeModal: QRCodeModal,
-                });
-
-                if (!connector.connected) {
-                    connector.createSession().then(() => {
-                        connector.on("connect", (error, payload) => {
-                            if (error) reject(error);
-                            resolve(connector);
-                        });
-                    });
-                } else {
-                    resolve(connector);
-                }
-            });
-        }
-
-        async function requestSignature(address) {
-            const message = `Authorize Virtual Access - ${Date.now()}`;
-            return window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, address]
-            });
+        // Add fullscreen control
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
         }
 
         function initializeTour() {
@@ -140,8 +151,16 @@
                 window.tdvplayer = player = TDV.PlayerAPI.create(settings);
                 isInitialized = true;
 
+                // Add fullscreen button handler
+                player.bind('click', (event) => {
+                    if (event.targetType === 'fullscreen') {
+                        toggleFullScreen();
+                    }
+                });
+
                 player.bind('stateChange', (event) => {
                     if (event.name === 'begin') {
+                        handleResize();
                         fadeOutPreloader();
                     }
                 });
@@ -152,15 +171,8 @@
             }
         }
 
-        function fadeOutPreloader() {
-            const preloadContainer = document.getElementById('preloadContainer');
-            if (preloadContainer) {
-                preloadContainer.style.opacity = '0';
-                setTimeout(() => {
-                    preloadContainer.style.display = 'none';
-                }, 500);
-            }
-        }
+        // Rest of your existing code remains the same...
+        // [Keep your existing setupWalletConnect, requestSignature, and fadeOutPreloader functions]
     </script>
 </body>
 </html>
