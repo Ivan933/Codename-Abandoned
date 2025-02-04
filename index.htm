@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, width=device-width, viewport-fit=cover">
+    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
     <title>Codename: Abandoned</title>
 
     <!-- Libraries -->
@@ -11,7 +11,31 @@
     <script src="script.js?v=1738683456665"></script>
 
     <style>
-        /* Maintain your original button style */
+        /* Fullscreen Eye Loading Animation */
+        #preloadContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        #eyeAnimation {
+            width: 60vh;
+            height: 60vh;
+            object-fit: contain;
+            filter: grayscale(100%);
+            animation: eye-pulse 2s ease-in-out infinite;
+        }
+
+        /* Cyberpunk-style Wallet Button */
         #wallet-button {
             margin-top: 20px;
             padding: 15px 40px;
@@ -27,7 +51,6 @@
             letter-spacing: 2px;
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
             transition: all 0.4s ease;
-            z-index: 10000;
         }
 
         #wallet-button:hover {
@@ -35,21 +58,52 @@
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
         }
 
-        /* Fullscreen fixes */
-        :fullscreen #viewer {
-            width: 100% !important;
-            height: 100% !important;
-        }
-
-        /* Panorama Viewer fixes */
+        /* Panorama Viewer */
         #viewer {
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
             background: #000;
+        }
+
+        /* Fix for Fullscreen Black Screen */
+        .fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: #000 !important;
+        }
+
+        /* AI Ghost NPC */
+        #ghost-npc {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        #ghost-dialogue-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 10px;
+            display: none;
+            font-family: 'Courier New', monospace;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        @keyframes eye-pulse {
+            0%, 100% { transform: scale(0.98); opacity: 0.9; }
+            50% { transform: scale(1.02); opacity: 1; }
         }
     </style>
 </head>
@@ -63,73 +117,75 @@
     <!-- Virtual Tour Viewer -->
     <div id="viewer"></div>
 
+    <!-- AI Ghost NPC -->
+    <img id="ghost-npc" src="ghost.png" width="100" alt="Ghost NPC">
+    <div id="ghost-dialogue-box">
+        <p id="ghost-dialogue">...</p>
+    </div>
+
     <script>
         let player;
         let isInitialized = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wallet-button').onclick = handleWalletConnection;
+            document.addEventListener("fullscreenchange", handleFullScreenChange);
+            document.getElementById("ghost-npc").addEventListener("click", interactWithGhost);
         });
 
         async function handleWalletConnection() {
             try {
-                // Check for any Ethereum provider
-                const provider = await detectProvider();
-                
+                if (!window.ethereum && !window.WalletConnect) {
+                    throw new Error('No crypto wallet detected');
+                }
+                const provider = window.ethereum || await setupWalletConnect();
                 const accounts = await provider.request({ method: 'eth_requestAccounts' });
                 await requestSignature(accounts[0]);
-                
+                if (!window.TDV) {
+                    throw new Error('Virtual tour engine failed to load');
+                }
                 initializeTour();
                 fadeOutPreloader();
-
             } catch (error) {
-                alert(`Connection Failed: ${error.message}`);
-                console.error('Wallet Error:', error);
+                alert(`Security Protocol Failed: ${error.message}`);
+                console.error('Connection Error:', error);
             }
-        }
-
-        async function detectProvider() {
-            if (window.ethereum) return window.ethereum;
-            
-            // Basic WalletConnect fallback
-            const connector = new WalletConnect({
-                bridge: "https://bridge.walletconnect.org",
-                qrcodeModal: QRCodeModal,
-            });
-
-            if (!connector.connected) {
-                await connector.createSession();
-            }
-
-            return new Promise((resolve, reject) => {
-                connector.on("connect", (error) => {
-                    if (error) reject(error);
-                    resolve(connector);
-                });
-            });
-        }
-
-        async function requestSignature(address) {
-            const message = `Authorize Access - ${Date.now()}`;
-            return window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, address]
-            });
         }
 
         function initializeTour() {
             if (isInitialized) return;
-            
             try {
                 const settings = new TDV.PlayerSettings();
                 settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
                 settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
                 settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
-
                 window.tdvplayer = player = TDV.PlayerAPI.create(settings);
                 isInitialized = true;
+            } catch (error) {
+                console.error('TDV Initialization Error:', error);
+                alert('Virtual environment failed to initialize');
+            }
+        }
 
-                // Handle fullscreen properly
-                player.bind('click', (event) => {
-                    if (event.targetType === 'fullscreen') {
-                        handle
+        function fadeOutPreloader() {
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = '0';
+                setTimeout(() => {
+                    preloadContainer.style.display = 'none';
+                }, 800);
+            }
+        }
+
+        function handleFullScreenChange() {
+            const viewer = document.getElementById("viewer");
+            if (document.fullscreenElement) {
+                viewer.classList.add("fullscreen");
+            } else {
+                viewer.classList.remove("fullscreen");
+            }
+        }
+    </script>
+</body>
+</html>
+
