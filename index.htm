@@ -140,7 +140,7 @@
                 }
                 const provider = window.ethereum || await setupWalletConnect();
                 const accounts = await provider.request({ method: 'eth_requestAccounts' });
-                await requestSignature(accounts[0]);
+                await requestSignature(accounts[0]);  // Calls requestSignature after connecting
                 if (!window.TDV) {
                     throw new Error('Virtual tour engine failed to load');
                 }
@@ -149,6 +149,21 @@
             } catch (error) {
                 alert(`Security Protocol Failed: ${error.message}`);
                 console.error('Connection Error:', error);
+            }
+        }
+
+        async function requestSignature(account) {
+            try {
+                const message = 'Please sign this message to confirm your identity.';
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, account]
+                });
+                console.log('Signed Message:', signature);
+                // Handle the signature here (e.g., send to server or validate)
+            } catch (error) {
+                console.error('Signature Request Failed:', error);
+                throw new Error('Failed to request signature');
             }
         }
 
