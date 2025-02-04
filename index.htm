@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Existing head content remains the same -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tour</title>
 
     <style>
-        /* Add to existing styles */
+        /* Existing styles for wallet info */
         #wallet-info {
             position: absolute;
             top: 20px;
@@ -14,16 +16,57 @@
             z-index: 1000;
         }
 
+        /* Fullscreen preloader */
         #preloadContainer {
-            /* Update preloader to include wallet UI */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7); /* Transparent dark background */
+            z-index: 9999;
             flex-direction: column;
             gap: 20px;
         }
 
+        #preloadContainer img {
+            width: 150px; /* Adjust size of loading gif */
+            height: 150px;
+            animation: rotate 2s linear infinite; /* Optional: Add a rotating effect */
+        }
+
+        /* Button styling */
+        #wallet-button {
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+            padding: 12px 30px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #wallet-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Center the "Connect Wallet" button at the bottom of the preloader */
         .wallet-prompt {
             color: #fff;
             text-align: center;
             font-size: 1.2em;
+            margin-bottom: 10px; /* Space between text and button */
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
