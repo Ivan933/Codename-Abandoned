@@ -258,9 +258,9 @@ showPreloader()
             return window.location.hash.substring(1).split('&').indexOf('ovrweb') > -1;
         }
     </script>
-    document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {
     setTimeout(() => {
-        // Find the div with the wallet image (matching its background-image URL)
+        // Find the div with the wallet image
         const walletButton = document.querySelector("div[style*='loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif']");
 
         if (walletButton) {
@@ -280,13 +280,21 @@ async function connectWallet() {
             console.log("✅ Wallet Connected:", accounts[0]);
 
             // Show the connected wallet on the page
-            document.body.insertAdjacentHTML("beforeend", `<p>Connected: ${accounts[0].substring(0, 6)}...</p>`);
+            const walletInfo = document.createElement("p");
+            walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+            walletInfo.style.color = "white";
+            walletInfo.style.position = "absolute";
+            walletInfo.style.top = "10px";
+            walletInfo.style.left = "10px";
+            document.body.appendChild(walletInfo);
         } catch (error) {
             console.error("❌ Wallet Connection Failed:", error);
         }
     } else {
         alert("MetaMask not detected! Please install it.");
     }
+}
+</script>
 }
 
     <style type="text/css">
