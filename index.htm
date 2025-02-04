@@ -1,68 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Keep existing meta tags and libraries -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tour</title>
+
+    <!-- Add WalletConnect CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.6.6/dist/umd/index.min.js"></script>
+
     <style>
-        /* Fullscreen Loading Styles */
+        /* Basic Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Fullscreen preloader */
         #preloadContainer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.8); /* Darker background */
             z-index: 9999;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        #loadingImage {
-            width: 80vmin;
-            height: 80vmin;
-            object-fit: contain;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        /* Fullscreen loading gif (eye animation) */
+        #preloadContainer img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Maintain aspect ratio */
         }
 
-        /* Wallet Button Styles */
+        /* Stylized Button */
         #wallet-button {
-            position: absolute;
-            bottom: 20%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 30px;
-            background: #f6851b;
-            color: white;
-            border: none;
-            border-radius: 25px;
+            font-size: 20px;
             font-family: 'Arial', sans-serif;
-            font-size: 1.2em;
-            font-weight: bold;
+            padding: 14px 40px;
+            background-color: #fff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 50px;
             cursor: pointer;
-            z-index: 10000;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(246, 133, 27, 0.4);
+            transition: 0.3s ease;
+            text-transform: uppercase;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            text-align: center;
         }
 
+        /* Button Hover Effect */
         #wallet-button:hover {
-            background: #ff9500;
-            transform: translateX(-50%) scale(1.05);
+            background-color: #333;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         }
 
-        #wallet-button:active {
-            transform: translateX(-50%) scale(0.95);
+        /* Button text styling */
+        .wallet-prompt {
+            color: #fff;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        /* Wallet info display (bottom right) */
+        #wallet-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body onload="onLoad()">
-    <!-- Fullscreen Loading with Button -->
+    <!-- Preloader with wallet connection -->
     <div id="preloadContainer">
-        <img id="loadingImage" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading">
-        <button id="wallet-button">Connect Wallet to Start</button>
+        <!-- Replace with a black-and-white eye gif -->
+        <img src="loading/eye_animation.gif" alt="Loading...">
+        <p class="wallet-prompt">Connect your wallet to access the virtual tour</p>
+        <button id="wallet-button">Connect Wallet</button>
     </div>
 
     <!-- Virtual Tour Viewer -->
@@ -71,85 +108,123 @@
     <script>
         let player;
         let isInitialized = false;
-        let isConnected = false;
+        let isWalletConnected = false;
 
-        async function onLoad() {
-            document.getElementById('wallet-button').onclick = handleWalletConnection;
+        let provider;
+
+        // Modified initialization flow
+        function onLoad() {
+            // Show the Connect Wallet button
+            document.getElementById("wallet-button").onclick = connectWallet;
         }
 
-        async function handleWalletConnection() {
-            try {
-                // Try MetaMask first
-                if (window.ethereum) {
-                    await handleMetaMask();
-                } else {
-                    // Fallback to WalletConnect
-                    await handleWalletConnect();
+        // Handle WalletConnect
+        async function handleWalletConnect() {
+            const connector = new WalletConnect({
+                bridge: "https://bridge.walletconnect.org",
+                qrcodeModal: QRCodeModal,
+            });
+
+            if (!connector.connected) {
+                await connector.createSession();
+            }
+
+            return new Promise((resolve, reject) => {
+                connector.on("connect", (error, payload) => {
+                    if (error) reject(error);
+                    window.ethereum = connector;
+                    resolve(payload.params[0].accounts[0]);
+                });
+            });
+        }
+
+        // Connect Wallet: MetaMask or WalletConnect
+        async function connectWallet() {
+            if (typeof window.ethereum !== "undefined") {
+                // Use MetaMask if available
+                provider = window.ethereum;
+                try {
+                    const accounts = await provider.request({
+                        method: "eth_requestAccounts"
+                    });
+                    onWalletConnectSuccess(accounts);
+                } catch (error) {
+                    handleWalletError(error);
                 }
-                
-                // Request signature after connection
-                await requestSignature();
-                
-                // If successful, start tour
-                if (!isInitialized) {
-                    initializeTour();
-                    isConnected = true;
+            } else {
+                // Use WalletConnect if MetaMask is not available
+                try {
+                    const account = await handleWalletConnect();
+                    onWalletConnectSuccess([account]);
+                } catch (error) {
+                    handleWalletError(error);
                 }
-                
-            } catch (error) {
-                alert(`Connection failed: ${error.message}`);
-                console.error(error);
             }
         }
 
-        async function handleMetaMask() {
-            const accounts = await window.ethereum.request({ 
-                method: 'eth_requestAccounts' 
-            });
-            return accounts[0];
+        // Successful connection handling
+        function onWalletConnectSuccess(accounts) {
+            isWalletConnected = true;
+            console.log("✅ Wallet Connected:", accounts[0]);
+
+            // Show wallet info
+            const walletInfo = document.createElement("div");
+            walletInfo.id = "wallet-info";
+            walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+            document.body.appendChild(walletInfo);
+
+            // Start the tour after connection
+            initializeTour();
         }
 
-        async function handleWalletConnect() {
-            // Initialize WalletConnect here
-            throw new Error('WalletConnect integration required');
+        // Handle connection errors
+        function handleWalletError(error) {
+            console.error("❌ Wallet Connection Failed:", error);
+
+            // Improved error handling
+            if (error.code === 4001) {
+                alert("Wallet connection request was rejected. Please try again.");
+            } else if (error.code === -32002) {
+                alert("A wallet connection request is already pending. Please approve it in your wallet.");
+            } else {
+                alert("An error occurred while connecting your wallet. Please check your wallet or try again.");
+            }
         }
 
-        async function requestSignature() {
-            const message = "Sign to access the virtual tour";
-            const address = await getWalletAddress();
-            
-            const signature = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, address]
-            });
-            
-            return signature;
-        }
-
-        async function getWalletAddress() {
-            const accounts = await window.ethereum.request({ 
-                method: 'eth_accounts' 
-            });
-            return accounts[0];
-        }
-
+        // Initialize the tour (replace TDV with actual library code)
         function initializeTour() {
             if (isInitialized) return;
-            
+
+            // Make sure TDV is loaded here
+            // Example: const settings = new TDV.PlayerSettings();
+
+            // Initialize the tour with proper settings
+            // For now, this part remains commented out until you link TDV correctly
+            /*
             const settings = new TDV.PlayerSettings();
             settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
             settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
             settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
-            
+
             window.tdvplayer = player = TDV.PlayerAPI.create(settings);
             isInitialized = true;
+            */
 
-            player.bind('stateChange', function(event) {
-                if (event.name === 'begin') {
-                    document.getElementById('preloadContainer').style.display = 'none';
-                }
-            }, player, true);
+            // Assuming the TDV Player is correctly initialized, dispose the preloader
+            disposePreloader();
+        }
+
+        // Dispose the preloader screen
+        function disposePreloader() {
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = "0";
+                setTimeout(() => {
+                    preloadContainer.style.display = "none";
+                }, 500);
+            }
         }
     </script>
 </body>
 </html>
+
