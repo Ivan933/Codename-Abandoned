@@ -2,80 +2,80 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
-    <title>Codename: Abandoned</title>
-
-    <!-- Libraries -->
-    <script src="lib/tdvplayer.js"></script>
-    <script src="lib/ThreeWebGL.js"></script>
-    <script src="script.js?v=1738683456665"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tour</title>
 
     <style>
-        /* Fullscreen Eye Loading Animation */
+        /* Existing styles for wallet info */
+        #wallet-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        /* Fullscreen preloader */
         #preloadContainer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.7); /* Transparent dark background */
             z-index: 9999;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        #eyeAnimation {
-            width: 60vh;
-            height: 60vh;
-            object-fit: contain;
-            filter: grayscale(100%);
-            animation: eye-pulse 2s ease-in-out infinite;
+        #preloadContainer img {
+            width: 150px; /* Adjust size of loading gif */
+            height: 150px;
+            animation: rotate 2s linear infinite; /* Optional: Add a rotating effect */
         }
 
-        /* Cyberpunk-style Wallet Button */
+        /* Button styling */
         #wallet-button {
-            position: absolute;
-            bottom: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 40px;
-            background: transparent;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+            padding: 12px 30px;
+            background-color: #007bff;
             color: #fff;
-            border: 2px solid #fff;
-            border-radius: 30px;
-            font-family: 'Courier New', monospace;
-            font-size: 1.4em;
-            font-weight: bold;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
-            z-index: 10000;
-            transition: all 0.4s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         #wallet-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-            transform: translateX(-50%) scale(1.05);
+            background-color: #0056b3;
         }
 
-        #wallet-button:active {
-            transform: translateX(-50%) scale(0.95);
+        /* Center the "Connect Wallet" button at the bottom of the preloader */
+        .wallet-prompt {
+            color: #fff;
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 10px; /* Space between text and button */
         }
 
-        @keyframes eye-pulse {
-            0%, 100% { transform: scale(0.98); opacity: 0.9; }
-            50% { transform: scale(1.02); opacity: 1; }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <!-- Loading Screen -->
+<body onload="onLoad()">
+    <!-- Preloader with wallet connection -->
     <div id="preloadContainer">
-        <img id="eyeAnimation" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Access Pending">
-        <button id="wallet-button">Initialize Wallet Protocol</button>
+        <img src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading...">
+        <p class="wallet-prompt">Connect your wallet to access the virtual tour</p>
+        <button id="wallet-button">Connect Wallet</button>
     </div>
 
     <!-- Virtual Tour Viewer -->
@@ -84,73 +84,69 @@
     <script>
         let player;
         let isInitialized = false;
+        let isWalletConnected = false;
 
-        // Initialize after DOM loads
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('wallet-button').onclick = handleWalletConnection;
-        });
+        // Modified initialization flow
+        function onLoad() {
+            // Only show wallet connection UI
+            document.getElementById("wallet-button").onclick = connectWallet;
+        }
 
-        async function handleWalletConnection() {
-            try {
-                // Check for Web3 provider
-                if (!window.ethereum && !window.WalletConnect) {
-                    throw new Error('No crypto wallet detected');
+        async function connectWallet() {
+            if (typeof window.ethereum !== "undefined") {
+                try {
+                    const accounts = await window.ethereum.request({ 
+                        method: "eth_requestAccounts" 
+                    });
+                    
+                    // Store connection state
+                    isWalletConnected = true;
+                    console.log("✅ Wallet Connected:", accounts[0]);
+
+                    // Show wallet info
+                    const walletInfo = document.createElement("div");
+                    walletInfo.id = "wallet-info";
+                    walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+                    document.body.appendChild(walletInfo);
+
+                    // Start the tour after connection
+                    initializeTour();
+
+                } catch (error) {
+                    console.error("❌ Wallet Connection Failed:", error);
+                    alert("Wallet connection failed. Please try again.");
                 }
-
-                // Connect to wallet
-                const provider = window.ethereum || await setupWalletConnect();
-                const accounts = await provider.request({ method: 'eth_requestAccounts' });
-                
-                // Request signature
-                await requestSignature(accounts[0]);
-                
-                // Initialize TDV Player
-                if (!window.TDV) {
-                    throw new Error('Virtual tour engine failed to load');
-                }
-                
-                initializeTour();
-                
-            } catch (error) {
-                alert(`Security Protocol Failed: ${error.message}`);
-                console.error('Connection Error:', error);
+            } else {
+                alert("Please install MetaMask to access this content!");
             }
-        }
-
-        async function setupWalletConnect() {
-            // WalletConnect integration logic here
-            throw new Error('WalletConnect initialization not implemented');
-        }
-
-        async function requestSignature(address) {
-            const message = `Authorize Virtual Access - ${Date.now()}`;
-            return window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, address]
-            });
         }
 
         function initializeTour() {
             if (isInitialized) return;
             
-            try {
-                const settings = new TDV.PlayerSettings();
-                settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
-                settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
-                settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
+            // Initialize tour
+            const settings = new TDV.PlayerSettings();
+            settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
+            settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
+            settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
+            
+            window.tdvplayer = player = TDV.PlayerAPI.create(settings);
+            isInitialized = true;
 
-                window.tdvplayer = player = TDV.PlayerAPI.create(settings);
-                isInitialized = true;
+            player.bind('stateChange', function(event) {
+                if (event.name === 'begin') {
+                    disposePreloader();
+                }
+            }, player, true);
+        }
 
-                player.bind('stateChange', (event) => {
-                    if (event.name === 'begin') {
-                        document.getElementById('preloadContainer').style.display = 'none';
-                    }
-                });
-
-            } catch (error) {
-                console.error('TDV Initialization Error:', error);
-                alert('Virtual environment failed to initialize');
+        function disposePreloader() {
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = "0";
+                setTimeout(() => {
+                    preloadContainer.style.display = "none";
+                }, 500);
             }
         }
     </script>
