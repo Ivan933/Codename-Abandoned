@@ -115,6 +115,7 @@
 
                 initializeTour();
                 fadeOutPreloader();
+                enterFullscreen();
 
             } catch (error) {
                 alert(`Security Protocol Failed: ${error.message}`);
@@ -165,6 +166,7 @@
                 player.bind('stateChange', (event) => {
                     if (event.name === 'begin') {
                         fadeOutPreloader();
+                        enterFullscreen();
                     }
                 });
 
@@ -183,7 +185,21 @@
                 }, 500);
             }
         }
+
+        function enterFullscreen() {
+            const viewer = document.getElementById('viewer');
+            if (viewer.requestFullscreen) {
+                viewer.requestFullscreen();
+            } else if (viewer.mozRequestFullScreen) {
+                viewer.mozRequestFullScreen();
+            } else if (viewer.webkitRequestFullscreen) {
+                viewer.webkitRequestFullscreen();
+            } else if (viewer.msRequestFullscreen) {
+                viewer.msRequestFullscreen();
+            }
+        }
     </script>
 </body>
 </html>
+
 
