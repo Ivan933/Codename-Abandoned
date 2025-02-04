@@ -1,273 +1,247 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="description" content="Virtual Tour"/>
-<script>(function(i,s,o,g,r,a,m){i["GoogleAnalyticsObject"]=r;i[r]=i[r]||function(){(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)})(window,document,"script","//www.google-analytics.com/analytics.js","ga");ga("create", "UA-116087-3", "auto"); ga("send", "pageview");</script>
-<meta itemprop="name" content="Codename: Abandoned"/><meta itemprop="description" content="Virtual Tour"/><meta itemprop="image" content="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg"/>
-<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="Codename: Abandoned"/><meta name="twitter:description" content="Virtual Tour"/><meta name="twitter:url" content="https://ivan933.github.io/Codename-Abandoned/index.htm"/><meta name="twitter:image:src" content="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg"/><meta name="twitter:image:width" content="1200"/><meta name="twitter:image:height" content="630"/>
-<meta property="og:title" content="Codename: Abandoned" /><meta property="og:type" content="website" /><meta property="og:description" content="Virtual Tour" /><meta property="og:url" content="https://ivan933.github.io/Codename-Abandoned/index.htm" /><meta property="og:image" content="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg" /><meta property="og:image:width" content="1200" /> <meta property="og:image:height" content="630" /><meta property="fb:app_id" content="817622095004141" /><link rel="image_src" href="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
     <title>Codename: Abandoned</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover" />
-    
+
+    <!-- Libraries -->
     <script src="lib/tdvplayer.js"></script>
-    <script src="script.js?v=1738706089743"></script>
     <script src="lib/ThreeWebGL.js"></script>
-    <script type="text/javascript">
-        var player;
-        var playersPlayingTmp = [];
-        var isInitialized = false;
+    <script src="script.js?v=1738683456665"></script>
 
-        function loadTour()
-        {
-            if(isInitialized)
-                return;
+    <style>
+        /* Fullscreen Eye Loading Animation */
+        #preloadContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease-in-out;
+        }
 
-            isInitialized = true;
+        #eyeAnimation {
+            width: 60vh;
+            height: 60vh;
+            object-fit: contain;
+            filter: grayscale(100%);
+            animation: eye-pulse 2s ease-in-out infinite;
+        }
 
-            var beginFunc = function(event){
-                if(event.name == 'begin')
-                {
-                    var camera = event.data.source.get('camera');
-                    if(camera && camera.get('initialSequence') && camera.get('initialSequence').get('movements').length > 0)
-                        return;
+        /* Cyberpunk-style Wallet Button */
+        #wallet-button {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.4em;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            transition: all 0.4s ease;
+        }
+
+        #wallet-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Panorama Viewer */
+        #viewer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* AI Ghost NPC */
+        #ghost-npc {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        #ghost-dialogue-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 10px;
+            display: none;
+            font-family: 'Courier New', monospace;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        @keyframes eye-pulse {
+            0%, 100% { transform: scale(0.98); opacity: 0.9; }
+            50% { transform: scale(1.02); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="preloadContainer">
+        <img id="eyeAnimation" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Access Pending">
+        <button id="wallet-button">Initialize Wallet Protocol</button>
+    </div>
+
+    <!-- Virtual Tour Viewer -->
+    <div id="viewer"></div>
+
+    <!-- AI Ghost NPC -->
+    <img id="ghost-npc" src="ghost.png" width="100" alt="Ghost NPC">
+    <div id="ghost-dialogue-box">
+        <p id="ghost-dialogue">...</p>
+    </div>
+
+    <script>
+        let player;
+        let isInitialized = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('wallet-button').onclick = handleWalletConnection;
+            document.addEventListener("fullscreenchange", handleFullScreenChange);
+            document.getElementById("ghost-npc").addEventListener("click", interactWithGhost);
+        });
+
+        async function handleWalletConnection() {
+            try {
+                if (!window.ethereum && !window.WalletConnect) {
+                    throw new Error('No crypto wallet detected');
                 }
 
-                if(event.sourceClassName == "MediaAudio")
-                    return;
-
-                player.unbindOnObjectsOf('PanoramaPlayListItem', 'begin', beginFunc, player, true);
-                player.unbind('stateChange', beginFunc, player, true);
-                window.parent.postMessage("tourLoaded", '*');
-
-                disposePreloader();
-
-                onVirtualTourLoaded();
-            };
-
-            var settings = new TDV.PlayerSettings();
-            
-            settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
-            settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738706089743');
-            settings.set(TDV.PlayerSettings.FLASH_EXPRESS_INSTALLER_URL, 'lib/ExpressInstall.swf');
-            settings.set(TDV.PlayerSettings.FLASH_AUDIO_PLAYER_URL, 'lib/AudioPlayer.swf');
-            settings.set(TDV.PlayerSettings.FLASH_PANORAMA_PLAYER_URL, 'lib/PanoramaRenderer.swf');
-            settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
-            settings.set(TDV.PlayerSettings.WEBVR_POLYFILL_URL, 'lib/WebVRPolyfill.js');
-            settings.set(TDV.PlayerSettings.HLS_URL, 'lib/Hls.js');
-            window.tdvplayer = player = TDV.PlayerAPI.create(settings);
-            player.bind('stateChange', beginFunc, player, true);
-            player.bindOnObjectsOf('PanoramaPlayListItem', 'begin', beginFunc, player, true);
-            player.bindOnObject('rootPlayer', 'start', function(e){
-                var queryDict = {}; location.search.substr(1).split("&").forEach(function(item) {var k = item.split("=")[0], v = decodeURIComponent(item.split("=")[1]);queryDict[k] = v});
-                if("media-index" in queryDict){
-                    setMediaByIndex(parseInt(queryDict["media-index"]) - 1);
+                const provider = window.ethereum || await setupWalletConnect();
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                
+                await requestSignature(accounts[0]);
+                
+                if (!window.TDV) {
+                    throw new Error('Virtual tour engine failed to load');
                 }
-                else if("media-name" in queryDict){
-                    setMediaByName(queryDict["media-name"]);
-                }
+                
+                initializeTour();
+                fadeOutPreloader();
+                
+            } catch (error) {
+                alert(`Security Protocol Failed: ${error.message}`);
+                console.error('Connection Error:', error);
+            }
+        }
 
-                player.getById('rootPlayer').bind('tourEnded', function(){
-                    onVirtualTourEnded();
-                }, player, true);
-            }, player, false);
+        async function setupWalletConnect() {
+            throw new Error('WalletConnect initialization not implemented');
+        }
 
-            /* Listen messages */
-            window.addEventListener('message', function (e) {
-                //Listen to messages for make actions to player in the format function:param1,param2
-                var action = e.data;
-                if (action == 'pauseTour' || action == 'resumeTour') {
-                    this[action].apply(this);
-                }
+        async function requestSignature(address) {
+            const message = `Authorize Virtual Access - ${Date.now()}`;
+            return window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, address]
             });
         }
 
-        function pauseTour()
-        {
-            var playLists = player.getByClassName('PlayList');
-            for(var i = 0, count = playLists.length; i<count; i++)
-            {
-                var playList = playLists[i];
-                var index = playList.get('selectedIndex');
-                if(index != -1)
-                {
-                    var item = playList.get('items')[index];
-                    var itemPlayer = item.get('player');
-                    if(itemPlayer && itemPlayer.pause)
-                    {
-                        playersPlayingTmp.push(itemPlayer);
-                        itemPlayer.pause();
-                    }
-                }
-            }
-
-            player.getById('pauseGlobalAudios')();
-        }
-
-        function resumeTour()
-        {
-            while(playersPlayingTmp.length)
-            {
-                var viewer = playersPlayingTmp.pop();
-                viewer.play();
-            }
-
-            player.getById('resumeGlobalAudios')();
-        }
-
-        function onVirtualTourLoaded()
-        {
-
-        }
-
-        function onVirtualTourEnded()
-        {
-
-        }
-
-        function setMediaByIndex(index)
-        {
-            if(window.tdvplayer !== undefined) {
-                var rootPlayer = window.tdvplayer.getById('rootPlayer');
-                rootPlayer.setMainMediaByIndex(index);
-            }
-        }
-
-        function setMediaByName(name)
-        {
-            if(window.tdvplayer !== undefined) {
-                var rootPlayer = window.tdvplayer.getById('rootPlayer');
-                rootPlayer.setMainMediaByName(name);
-            }
-        }
-
-        function showPreloader()
-        {
-            var preloadContainer = document.getElementById('preloadContainer');
-            preloadContainer.style.opacity = 1;
-        }
-
-        function disposePreloader()
-        {
-            var transitionEnd = transitionEndEventName();
-            var preloadContainer = document.getElementById('preloadContainer');
-
+        function initializeTour() {
+            if (isInitialized) return;
             
+            try {
+                const settings = new TDV.PlayerSettings();
+                settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
+                settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
+                settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
 
-            var transitionEndName = transitionEndEventName();
-            if(transitionEndName)
-            {
-                preloadContainer.addEventListener(transitionEnd, hide, false);
-
-                preloadContainer.style.opacity = 0;
-            }
-            else
-            {
-                hide();
-            }
-
-            function hide()
-            {
-                preloadContainer.style.visibility = 'hidden';
-                preloadContainer.style.display = 'none';
-            }
-
-            function transitionEndEventName () {
-                var i,
-                        undefined,
-                        el = document.createElement('div'),
-                        transitions = {
-                            'transition':'transitionend',
-                            'OTransition':'otransitionend',
-                            'MozTransition':'transitionend',
-                            'WebkitTransition':'webkitTransitionEnd'
-                        };
-
-                for (i in transitions) {
-                    if (transitions.hasOwnProperty(i) && el.style[i] !== undefined) {
-                        return transitions[i];
-                    }
-                }
-
-                return undefined;
+                window.tdvplayer = player = TDV.PlayerAPI.create(settings);
+                isInitialized = true;
+            } catch (error) {
+                console.error('TDV Initialization Error:', error);
+                alert('Virtual environment failed to initialize');
             }
         }
 
-        function onBodyClick(){
-            document.body.removeEventListener("click", onBodyClick);
-            document.body.removeEventListener("touchend", onBodyClick);
-            loadTour();
+        function fadeOutPreloader() {
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = '0';
+                setTimeout(() => {
+                    preloadContainer.style.display = 'none';
+                }, 800);
+            }
         }
 
-        function onLoad() {
-            if (isOVRWeb()){
-                showPreloader();
-                loadTour();
-                return;
-            }
-
-            document.body.addEventListener("click", onBodyClick);
-document.body.addEventListener("touchend", onBodyClick);
-showPreloader()
-        }
-
-        function playVideo(video) {
-            function isSafariDesktopV11orGreater() {
-                return /^((?!chrome|android|crios|ipad|iphone).)*safari/i.test(navigator.userAgent) && parseFloat(/Version\/([0-9]+\.[0-9]+)/i.exec(navigator.userAgent)[1]) >= 11;
-            }
-
-            function detectUserAction() {
-                var onVideoClick = function(e) {
-                    if(video.paused) {
-                        video.play();
-                    }
-                    video.muted = false;
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
-                    video.removeEventListener('click', onVideoClick);
-                    video.removeEventListener('touchend', onVideoClick);
-                };
-                video.addEventListener("click", onVideoClick);
-                video.addEventListener("touchend", onVideoClick);
-            }
-
-            if (isSafariDesktopV11orGreater()) {
-                video.muted = true;
-                video.play();
+        function handleFullScreenChange() {
+            const viewer = document.getElementById("viewer");
+            if (document.fullscreenElement) {
+                viewer.classList.add("fullscreen");
             } else {
-                var canPlay = true;
-                var promise = video.play();
-                if (promise) {
-                    promise.catch(function() {
-                        video.muted = true;
-                        video.play();
-                        detectUserAction();
-                    });
-                } else {
-                    canPlay = false;
-                }
-
-                if (!canPlay || video.muted) {
-                    detectUserAction();
-                }
+                viewer.classList.remove("fullscreen");
             }
         }
 
-        function isOVRWeb(){
-            return window.location.hash.substring(1).split('&').indexOf('ovrweb') > -1;
+        function goFullScreen() {
+            const viewer = document.getElementById("viewer");
+            if (viewer.requestFullscreen) {
+                viewer.requestFullscreen();
+            } else if (viewer.mozRequestFullScreen) {
+                viewer.mozRequestFullScreen();
+            } else if (viewer.webkitRequestFullscreen) {
+                viewer.webkitRequestFullscreen();
+            } else if (viewer.msRequestFullscreen) {
+                viewer.msRequestFullscreen();
+            }
+        }
+
+        async function interactWithGhost() {
+            const aiResponse = await fetchGhostResponse();
+            document.getElementById("ghost-dialogue").innerText = aiResponse;
+            document.getElementById("ghost-dialogue-box").style.display = "block";
+
+            setTimeout(() => {
+                document.getElementById("ghost-dialogue-box").style.display = "none";
+            }, 5000);
+        }
+
+        async function fetchGhostResponse() {
+            try {
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer YOUR_OPENAI_API_KEY`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4",
+                        messages: [{ role: "system", content: "You are a ghost giving cryptic clues about the abandoned world." }]
+                    })
+                });
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (error) {
+                console.error("AI Error:", error);
+                return "I sense darkness ahead... Be careful!";
+            }
         }
     </script>
-    <style type="text/css">
-        html, body { background-color: #000000;  width: 100%; height: 100%; margin: 0; padding: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-
-        #viewer { background-color: #000000; z-index:1; position:absolute; width: 100%; height: 100%; top: 0; }
-        #preloadContainer { z-index:2; position:relative; width:100%; height:100%; transition: opacity 1s; -webkit-transition: opacity 1s; -moz-transition: opacity 1s; -o-transition: opacity 1s;}
-    </style>
-    
-</head>
-<body onload="onLoad()">
-    <div id="preloadContainer" style="background-color:rgba(0,0,0,1)"><div style="z-index: 4; position: absolute; background-image: url('loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif'); background-size: contain; background-repeat: no-repeat; background-position: center center; overflow: hidden; right: 9.33%; top: 0%; width: 81.66%; height: 100.00%"></div></div>
-    <div id="viewer"></div>
 </body>
 </html>
