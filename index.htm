@@ -1,9 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Keep previous meta tags and libraries -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
+    <title>Codename: Abandoned</title>
+
+    <!-- Libraries -->
+    <script src="lib/tdvplayer.js"></script>
+    <script src="lib/ThreeWebGL.js"></script>
+    <script src="script.js?v=1738683456665"></script>
+    <script src="https://unpkg.com/@walletconnect/client"></script>
+    <script src="https://unpkg.com/@walletconnect/qrcode-modal"></script>
+
     <style>
-        /* Enhanced Eye Theme */
+        /* Fullscreen Eye Loading Animation */
         #preloadContainer {
             position: fixed;
             top: 0;
@@ -14,139 +24,164 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-direction: column;
             z-index: 9999;
-            transition: opacity 1s ease;
+            transition: opacity 0.5s ease-out;
         }
 
         #eyeAnimation {
-            width: 70vh;
-            height: 70vh;
+            width: 60vh;
+            height: 60vh;
             object-fit: contain;
-            filter: contrast(1.2) brightness(0.9);
-            animation: eye-scan 4s linear infinite;
+            filter: grayscale(100%);
+            animation: eye-pulse 2s ease-in-out infinite;
         }
 
-        /* Holographic Button Design */
+        /* Cyberpunk-style Wallet Button */
         #wallet-button {
             position: absolute;
             bottom: 15%;
             left: 50%;
             transform: translateX(-50%);
-            padding: 18px 45px;
-            background: rgba(0, 0, 0, 0.3);
-            color: #0ff;
-            border: 2px solid #0ff;
+            padding: 15px 40px;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
             border-radius: 30px;
-            font-family: 'Arial Narrow', sans-serif;
+            font-family: 'Courier New', monospace;
             font-size: 1.4em;
-            letter-spacing: 3px;
+            font-weight: bold;
             cursor: pointer;
             z-index: 10000;
             transition: all 0.4s ease;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
         }
 
         #wallet-button:hover {
-            background: rgba(0, 255, 255, 0.1);
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-            transform: translateX(-50%) scale(1.1);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transform: translateX(-50%) scale(1.05);
         }
 
-        @keyframes eye-scan {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
+        #wallet-button:active {
+            transform: translateX(-50%) scale(0.95);
         }
 
-        /* Hidden until needed */
-        #viewer {
-            opacity: 0;
-            transition: opacity 1s ease;
+        @keyframes eye-pulse {
+            0%, 100% { transform: scale(0.98); opacity: 0.9; }
+            50% { transform: scale(1.02); opacity: 1; }
         }
     </style>
 </head>
 <body>
     <!-- Loading Screen -->
     <div id="preloadContainer">
-        <img id="eyeAnimation" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Security Verification">
-        <button id="wallet-button">INITIALIZE ACCESS</button>
+        <img id="eyeAnimation" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Access Pending">
+        <button id="wallet-button">Initialize Wallet Protocol</button>
     </div>
 
     <!-- Virtual Tour Viewer -->
     <div id="viewer"></div>
-
-    <!-- Background Audio -->
-    <audio id="ambienceAudio" loop>
-        <source src="audio/ambience.mp3" type="audio/mpeg">
-    </audio>
 
     <script>
         let player;
         let isInitialized = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('wallet-button').onclick = async () => {
-                try {
-                    await authenticateWallet();
-                    await initializeTourEnvironment();
-                } catch (error) {
-                    console.error('Access Denied:', error);
-                    alert(`SYSTEM ERROR: ${error.message}`);
-                }
-            };
+            document.getElementById('wallet-button').onclick = handleWalletConnection;
         });
 
-        async function authenticateWallet() {
-            if (!window.ethereum) throw new Error('No cryptographic interface detected');
-            
-            const accounts = await window.ethereum.request({ 
-                method: 'eth_requestAccounts' 
-            });
+        async function handleWalletConnection() {
+            try {
+                let provider;
+                if (window.ethereum) {
+                    provider = window.ethereum;
+                } else {
+                    provider = await setupWalletConnect();
+                }
 
-            // Request digital signature
-            const signature = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [
-                    `ACCESS REQUEST:\n${Date.now()}\nVIRTUAL TOUR INITIATION`,
-                    accounts[0]
-                ]
-            });
+                if (!provider) {
+                    throw new Error('No crypto wallet detected');
+                }
 
-            return { account: accounts[0], signature };
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
+                await requestSignature(accounts[0]);
+
+                if (!window.TDV) {
+                    throw new Error('Virtual tour engine failed to load');
+                }
+
+                initializeTour();
+                fadeOutPreloader();
+
+            } catch (error) {
+                alert(`Security Protocol Failed: ${error.message}`);
+                console.error('Connection Error:', error);
+            }
         }
 
-        async function initializeTourEnvironment() {
-            // Fade out preloader elements
-            document.getElementById('wallet-button').style.opacity = '0';
-            document.getElementById('eyeAnimation').style.opacity = '0.5';
+        async function setupWalletConnect() {
+            return new Promise((resolve, reject) => {
+                const connector = new WalletConnect({
+                    bridge: "https://bridge.walletconnect.org",
+                    qrcodeModal: QRCodeModal,
+                });
 
-            // Initialize TDV Player
-            if (!window.TDV) throw new Error('Virtual environment core missing');
-            
-            const settings = new TDV.PlayerSettings();
-            settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
-            settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
-            settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
-
-            window.tdvplayer = player = TDV.PlayerAPI.create(settings);
-            
-            // Start ambient audio
-            const audioElement = document.getElementById('ambienceAudio');
-            audioElement.play().catch(error => {
-                console.warn('Audio autoplay blocked:', error);
-            });
-
-            // When tour is ready
-            player.bind('stateChange', (event) => {
-                if (event.name === 'begin') {
-                    document.getElementById('preloadContainer').style.opacity = '0';
-                    document.getElementById('viewer').style.opacity = '1';
-                    
-                    setTimeout(() => {
-                        document.getElementById('preloadContainer').style.display = 'none';
-                    }, 1000);
+                if (!connector.connected) {
+                    connector.createSession().then(() => {
+                        connector.on("connect", (error, payload) => {
+                            if (error) reject(error);
+                            resolve(connector);
+                        });
+                    });
+                } else {
+                    resolve(connector);
                 }
             });
+        }
+
+        async function requestSignature(address) {
+            const message = `Authorize Virtual Access - ${Date.now()}`;
+            return window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, address]
+            });
+        }
+
+        function initializeTour() {
+            if (isInitialized) return;
+
+            try {
+                const settings = new TDV.PlayerSettings();
+                settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
+                settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
+                settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
+
+                window.tdvplayer = player = TDV.PlayerAPI.create(settings);
+                isInitialized = true;
+
+                player.bind('stateChange', (event) => {
+                    if (event.name === 'begin') {
+                        fadeOutPreloader();
+                    }
+                });
+
+            } catch (error) {
+                console.error('TDV Initialization Error:', error);
+                alert('Virtual environment failed to initialize');
+            }
+        }
+
+        function fadeOutPreloader() {
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = '0';
+                setTimeout(() => {
+                    preloadContainer.style.display = 'none';
+                }, 500);
+            }
         }
     </script>
 </body>
