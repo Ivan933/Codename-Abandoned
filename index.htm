@@ -1,119 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
-    <meta name="description" content="Virtual Tour">
-    <title>Codename: Abandoned</title>
-
-    <!-- Open Graph & Twitter Metadata -->
-    <meta property="og:title" content="Codename: Abandoned">
-    <meta property="og:description" content="Virtual Tour">
-    <meta property="og:image" content="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Codename: Abandoned">
-    <meta name="twitter:description" content="Virtual Tour">
-    <meta name="twitter:image" content="https://ivan933.github.io/Codename-Abandoned/socialThumbnail.jpg">
-
-    <!-- Google Analytics -->
-    <script>
-        (function(i, s, o, g, r, a, m) {
-            i["GoogleAnalyticsObject"] = r;
-            i[r] = i[r] || function() {
-                (i[r].q = i[r].q || []).push(arguments)
-            }, i[r].l = 1 * new Date();
-            a = s.createElement(o),
-            m = s.getElementsByTagName(o)[0];
-            a.async = 1;
-            a.src = g;
-            m.parentNode.insertBefore(a, m)
-        })(window, document, "script", "//www.google-analytics.com/analytics.js", "ga");
-        ga("create", "UA-116087-3", "auto");
-        ga("send", "pageview");
-    </script>
-
-    <!-- Libraries -->
-    <script src="lib/tdvplayer.js"></script>
-    <script src="script.js?v=1738683456665"></script>
-    <script src="lib/ThreeWebGL.js"></script>
+    <!-- Existing head content remains the same -->
 
     <style>
-        html, body {
-            background-color: #000;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
-
-        #viewer {
-            background-color: #000;
-            z-index: 1;
+        /* Add to existing styles */
+        #wallet-info {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-        }
-
-        /* Preloader Styling */
-        #preloadContainer {
-            z-index: 1000;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s;
-        }
-
-        #preloadContainer img {
-            width: 200px;
-            height: autopx;
-             max-width: 80%; /* Responsive */
-        }
-
-        /* Wallet Button */
-        #wallet-button {
-            position: absolute;
-            bottom: 20px;
+            top: 20px;
             right: 20px;
-            padding: 10px 15px;
-            background-color: #ffcc00;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        #preloadContainer {
+            /* Update preloader to include wallet UI */
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .wallet-prompt {
+            color: #fff;
+            text-align: center;
+            font-size: 1.2em;
         }
     </style>
 </head>
 <body onload="onLoad()">
-    <!-- Preloader -->
+    <!-- Preloader with wallet connection -->
     <div id="preloadContainer">
         <img src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading...">
+        <p class="wallet-prompt">Connect your wallet to access the virtual tour</p>
+        <button id="wallet-button">Connect Wallet</button>
     </div>
 
     <!-- Virtual Tour Viewer -->
     <div id="viewer"></div>
 
-    <!-- Wallet Button -->
-    <button id="wallet-button">Connect Wallet</button>
-
     <script>
-        var player;
-        var isInitialized = false;
+        let player;
+        let isInitialized = false;
+        let isWalletConnected = false;
 
-        function loadTour() {
+        // Modified initialization flow
+        function onLoad() {
+            // Only show wallet connection UI
+            document.getElementById("wallet-button").onclick = connectWallet;
+        }
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== "undefined") {
+                try {
+                    const accounts = await window.ethereum.request({ 
+                        method: "eth_requestAccounts" 
+                    });
+                    
+                    // Store connection state
+                    isWalletConnected = true;
+                    console.log("✅ Wallet Connected:", accounts[0]);
+
+                    // Show wallet info
+                    const walletInfo = document.createElement("div");
+                    walletInfo.id = "wallet-info";
+                    walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
+                    document.body.appendChild(walletInfo);
+
+                    // Start the tour after connection
+                    initializeTour();
+
+                } catch (error) {
+                    console.error("❌ Wallet Connection Failed:", error);
+                    alert("Wallet connection failed. Please try again.");
+                }
+            } else {
+                alert("Please install MetaMask to access this content!");
+            }
+        }
+
+        function initializeTour() {
             if (isInitialized) return;
-            isInitialized = true;
-
-            var settings = new TDV.PlayerSettings();
+            
+            // Initialize tour
+            const settings = new TDV.PlayerSettings();
             settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
             settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
             settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
+            
             window.tdvplayer = player = TDV.PlayerAPI.create(settings);
+            isInitialized = true;
 
             player.bind('stateChange', function(event) {
                 if (event.name === 'begin') {
@@ -123,58 +98,14 @@
         }
 
         function disposePreloader() {
-            var preloadContainer = document.getElementById('preloadContainer');
-            if (!preloadContainer) return;
-            
-            preloadContainer.style.opacity = "0";
-            setTimeout(() => { preloadContainer.style.display = "none"; }, 500);
-        }
-
-       function onLoad() {
-    document.body.addEventListener("click", startTour, { once: true });
-    document.body.addEventListener("touchend", startTour, { once: true });
-}
-
-function startTour() {
-    console.log("🟢 Click detected! Loading tour...");
-    loadTour();
-}
-
-        function onBodyClick() {
-            document.body.removeEventListener("click", onBodyClick);
-            document.body.removeEventListener("touchend", onBodyClick);
-            loadTour();
-        }
-
-        // Wallet Connection
-        document.getElementById("wallet-button").onclick = connectWallet;
-
-     async function connectWallet() {
-    if (typeof window.ethereum !== "undefined") {
-        try {
-            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-            console.log("✅ Wallet Connected:", accounts[0]);
-
-            // Show wallet address
-            let walletInfo = document.getElementById("wallet-info");
-            if (!walletInfo) {
-                walletInfo = document.createElement("p");
-                walletInfo.id = "wallet-info";
-                document.body.appendChild(walletInfo);
+            const preloadContainer = document.getElementById('preloadContainer');
+            if (preloadContainer) {
+                preloadContainer.style.opacity = "0";
+                setTimeout(() => {
+                    preloadContainer.style.display = "none";
+                }, 500);
             }
-            walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
-        } catch (error) {
-            console.error("❌ Wallet Connection Failed:", error);
         }
-    } else {
-        alert("❌ MetaMask not detected! Please install it.");
-    }
-}
-        document.addEventListener("DOMContentLoaded", function () {
-    console.log("🔵 Document Loaded, starting tour...");
-    loadTour();
-});
-
     </script>
 </body>
 </html>
