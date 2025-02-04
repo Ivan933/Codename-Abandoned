@@ -1,153 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Tour</title>
-
+    <!-- Keep previous meta tags and libraries -->
     <style>
-        /* Existing styles for wallet info */
-        #wallet-info {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: #fff;
-            font-size: 14px;
-            z-index: 1000;
-        }
-
-        /* Fullscreen preloader */
+        /* Enhanced Eye Theme */
         #preloadContainer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: rgba(0, 0, 0, 0.7); /* Transparent dark background */
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             z-index: 9999;
-            flex-direction: column;
-            gap: 20px;
+            transition: opacity 1s ease;
         }
 
-        #preloadContainer img {
-            width: 150px; /* Adjust size of loading gif */
-            height: 150px;
-            animation: rotate 2s linear infinite; /* Optional: Add a rotating effect */
+        #eyeAnimation {
+            width: 70vh;
+            height: 70vh;
+            object-fit: contain;
+            filter: contrast(1.2) brightness(0.9);
+            animation: eye-scan 4s linear infinite;
         }
 
-        /* Button styling */
+        /* Holographic Button Design */
         #wallet-button {
-            font-size: 18px;
-            font-family: Arial, sans-serif;
-            padding: 12px 30px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 18px 45px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #0ff;
+            border: 2px solid #0ff;
+            border-radius: 30px;
+            font-family: 'Arial Narrow', sans-serif;
+            font-size: 1.4em;
+            letter-spacing: 3px;
             cursor: pointer;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+            transition: all 0.4s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         #wallet-button:hover {
-            background-color: #0056b3;
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            transform: translateX(-50%) scale(1.1);
         }
 
-        /* Center the "Connect Wallet" button at the bottom of the preloader */
-        .wallet-prompt {
-            color: #fff;
-            text-align: center;
-            font-size: 1.2em;
-            margin-bottom: 10px; /* Space between text and button */
+        @keyframes eye-scan {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
         }
 
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* Hidden until needed */
+        #viewer {
+            opacity: 0;
+            transition: opacity 1s ease;
         }
     </style>
 </head>
-<body onload="onLoad()">
-    <!-- Preloader with wallet connection -->
+<body>
+    <!-- Loading Screen -->
     <div id="preloadContainer">
-        <img src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading...">
-        <p class="wallet-prompt">Connect your wallet to access the virtual tour</p>
-        <button id="wallet-button">Connect Wallet</button>
+        <img id="eyeAnimation" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Security Verification">
+        <button id="wallet-button">INITIALIZE ACCESS</button>
     </div>
 
     <!-- Virtual Tour Viewer -->
     <div id="viewer"></div>
 
+    <!-- Background Audio -->
+    <audio id="ambienceAudio" loop>
+        <source src="audio/ambience.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         let player;
         let isInitialized = false;
-        let isWalletConnected = false;
 
-        // Modified initialization flow
-        function onLoad() {
-            // Only show wallet connection UI
-            document.getElementById("wallet-button").onclick = connectWallet;
-        }
-
-        async function connectWallet() {
-            if (typeof window.ethereum !== "undefined") {
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('wallet-button').onclick = async () => {
                 try {
-                    const accounts = await window.ethereum.request({ 
-                        method: "eth_requestAccounts" 
-                    });
-                    
-                    // Store connection state
-                    isWalletConnected = true;
-                    console.log("✅ Wallet Connected:", accounts[0]);
-
-                    // Show wallet info
-                    const walletInfo = document.createElement("div");
-                    walletInfo.id = "wallet-info";
-                    walletInfo.textContent = `Connected: ${accounts[0].substring(0, 6)}...`;
-                    document.body.appendChild(walletInfo);
-
-                    // Start the tour after connection
-                    initializeTour();
-
+                    await authenticateWallet();
+                    await initializeTourEnvironment();
                 } catch (error) {
-                    console.error("❌ Wallet Connection Failed:", error);
-                    alert("Wallet connection failed. Please try again.");
+                    console.error('Access Denied:', error);
+                    alert(`SYSTEM ERROR: ${error.message}`);
                 }
-            } else {
-                alert("Please install MetaMask to access this content!");
-            }
+            };
+        });
+
+        async function authenticateWallet() {
+            if (!window.ethereum) throw new Error('No cryptographic interface detected');
+            
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+
+            // Request digital signature
+            const signature = await window.ethereum.request({
+                method: 'personal_sign',
+                params: [
+                    `ACCESS REQUEST:\n${Date.now()}\nVIRTUAL TOUR INITIATION`,
+                    accounts[0]
+                ]
+            });
+
+            return { account: accounts[0], signature };
         }
 
-        function initializeTour() {
-            if (isInitialized) return;
+        async function initializeTourEnvironment() {
+            // Fade out preloader elements
+            document.getElementById('wallet-button').style.opacity = '0';
+            document.getElementById('eyeAnimation').style.opacity = '0.5';
+
+            // Initialize TDV Player
+            if (!window.TDV) throw new Error('Virtual environment core missing');
             
-            // Initialize tour
             const settings = new TDV.PlayerSettings();
             settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
             settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
             settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
-            
+
             window.tdvplayer = player = TDV.PlayerAPI.create(settings);
-            isInitialized = true;
+            
+            // Start ambient audio
+            const audioElement = document.getElementById('ambienceAudio');
+            audioElement.play().catch(error => {
+                console.warn('Audio autoplay blocked:', error);
+            });
 
-            player.bind('stateChange', function(event) {
+            // When tour is ready
+            player.bind('stateChange', (event) => {
                 if (event.name === 'begin') {
-                    disposePreloader();
+                    document.getElementById('preloadContainer').style.opacity = '0';
+                    document.getElementById('viewer').style.opacity = '1';
+                    
+                    setTimeout(() => {
+                        document.getElementById('preloadContainer').style.display = 'none';
+                    }, 1000);
                 }
-            }, player, true);
-        }
-
-        function disposePreloader() {
-            const preloadContainer = document.getElementById('preloadContainer');
-            if (preloadContainer) {
-                preloadContainer.style.opacity = "0";
-                setTimeout(() => {
-                    preloadContainer.style.display = "none";
-                }, 500);
-            }
+            });
         }
     </script>
 </body>
