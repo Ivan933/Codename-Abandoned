@@ -1,125 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- ... (keep existing meta tags and other head content) ... -->
-
+    <!-- Keep existing meta tags and libraries -->
     <style>
-        /* ... (keep existing styles) ... */
-
-        /* Updated Preloader Styling */
+        /* Fullscreen Loading Styles */
         #preloadContainer {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: rgba(0, 0, 0, 1);
+            background: #000;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.5s;
+            z-index: 9999;
         }
 
-        #preloadContainer img {
-            max-width: 200px;
-            max-height: 200px;
-            margin-bottom: 30px;
+        #loadingImage {
+            width: 80vmin;
+            height: 80vmin;
+            object-fit: contain;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
-        /* Updated Wallet Button Styling */
+        /* Wallet Button Styles */
         #wallet-button {
-            position: relative;
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
             padding: 15px 30px;
-            background-color: #f6851b; /* MetaMask orange */
+            background: #f6851b;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 25px;
             font-family: 'Arial', sans-serif;
-            font-size: 18px;
+            font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(246, 133, 27, 0.4);
         }
 
         #wallet-button:hover {
-            transform: translateY(-2px);
-            background-color: #ff9500;
+            background: #ff9500;
+            transform: translateX(-50%) scale(1.05);
         }
 
         #wallet-button:active {
-            transform: translateY(0);
-        }
-
-        .wallet-prompt {
-            color: white;
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            text-align: center;
-            padding: 0 20px;
+            transform: translateX(-50%) scale(0.95);
         }
     </style>
 </head>
 <body onload="onLoad()">
-    <!-- Preloader -->
+    <!-- Fullscreen Loading with Button -->
     <div id="preloadContainer">
-        <img src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading...">
-        <p class="wallet-prompt">Connect your MetaMask wallet to access the virtual tour</p>
-        <button id="wallet-button">Connect Wallet</button>
+        <img id="loadingImage" src="loading/HTMLImage_D852ACBA_C9D9_4C69_41C0_1FC9A930EF8A.gif" alt="Loading">
+        <button id="wallet-button">Connect Wallet to Start</button>
     </div>
 
-    <!-- ... (keep existing viewer div) ... -->
+    <!-- Virtual Tour Viewer -->
+    <div id="viewer"></div>
 
     <script>
-        // ... (keep existing variable declarations) ... 
+        let player;
+        let isInitialized = false;
+        let isConnected = false;
 
-        function onLoad() {
-            initializeWalletButton();
-        }
-
-        function initializeWalletButton() {
-            const walletButton = document.getElementById('wallet-button');
-            walletButton.onclick = handleWalletConnection;
-            
-            // Auto-detect MetaMask availability
-            if (typeof window.ethereum === 'undefined') {
-                walletButton.disabled = true;
-                walletButton.textContent = 'MetaMask Not Detected';
-                showError('Please install MetaMask to continue');
-            }
+        async function onLoad() {
+            document.getElementById('wallet-button').onclick = handleWalletConnection;
         }
 
         async function handleWalletConnection() {
             try {
-                // Check if MetaMask is installed
-                if (typeof window.ethereum === 'undefined') {
-                    throw new Error('MetaMask not installed');
+                // Try MetaMask first
+                if (window.ethereum) {
+                    await handleMetaMask();
+                } else {
+                    // Fallback to WalletConnect
+                    await handleWalletConnect();
                 }
-
-                // Request account access
-                const accounts = await window.ethereum.request({ 
-                    method: 'eth_requestAccounts' 
-                });
-
-                // Verify connection
-                if (!accounts || accounts.length === 0) {
-                    throw new Error('No accounts found');
+                
+                // Request signature after connection
+                await requestSignature();
+                
+                // If successful, start tour
+                if (!isInitialized) {
+                    initializeTour();
+                    isConnected = true;
                 }
-
-                // Successful connection
-                console.log('Connected account:', accounts[0]);
-                showWalletAddress(accounts[0]);
-                initializeTour();
-
+                
             } catch (error) {
-                console.error('Connection error:', error);
-                showError(`Connection failed: ${error.message}`);
+                alert(`Connection failed: ${error.message}`);
+                console.error(error);
             }
         }
 
-        function showWalletAddress(address) {
-            const walletInfo = document.createElement('div');
-            walletInfo.id
+        async function handleMetaMask() {
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+            return accounts[0];
+        }
 
+        async function handleWalletConnect() {
+            // Initialize WalletConnect here
+            throw new Error('WalletConnect integration required');
+        }
+
+        async function requestSignature() {
+            const message = "Sign to access the virtual tour";
+            const address = await getWalletAddress();
+            
+            const signature = await window.ethereum.request({
+                method: 'personal_sign',
+                params: [message, address]
+            });
+            
+            return signature;
+        }
+
+        async function getWalletAddress() {
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_accounts' 
+            });
+            return accounts[0];
+        }
+
+        function initializeTour() {
+            if (isInitialized) return;
+            
+            const settings = new TDV.PlayerSettings();
+            settings.set(TDV.PlayerSettings.CONTAINER, document.getElementById('viewer'));
+            settings.set(TDV.PlayerSettings.SCRIPT_URL, 'script.js?v=1738683456665');
+            settings.set(TDV.PlayerSettings.THREE_JS_WEBGL_URL, 'lib/ThreeWebGL.js');
+            
+            window.tdvplayer = player = TDV.PlayerAPI.create(settings);
+            isInitialized = true;
+
+            player.bind('stateChange', function(event) {
+                if (event.name === 'begin') {
+                    document.getElementById('preloadContainer').style.display = 'none';
+                }
+            }, player, true);
+        }
+    </script>
+</body>
+</html>
