@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=0.5, width=device-width, viewport-fit=cover">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, width=device-width, viewport-fit=cover">
     <title>Codename: Abandoned</title>
 
     <!-- Libraries -->
@@ -11,92 +11,46 @@
     <script src="script.js?v=1738683456665"></script>
 
     <style>
-        /* Fullscreen Eye Loading Animation */
-        #preloadContainer {
+        /* Fullscreen fixes */
+        :fullscreen #viewer {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Panorama Viewer fixes */
+        #viewer {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.8s ease-in-out;
-        }
-
-        #eyeAnimation {
-            width: 60vh;
-            height: 60vh;
-            object-fit: contain;
-            filter: grayscale(100%);
-            animation: eye-pulse 2s ease-in-out infinite;
-        }
-
-        /* Cyberpunk-style Wallet Button */
-        #wallet-button {
-            margin-top: 20px;
-            padding: 15px 40px;
-            background: transparent;
-            color: #fff;
-            border: 2px solid #fff;
-            border-radius: 30px;
-            font-family: 'Courier New', monospace;
-            font-size: 1.4em;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-            transition: all 0.4s ease;
-        }
-
-        #wallet-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-        }
-
-        /* Panorama Viewer */
-        #viewer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
             overflow: hidden;
             background: #000;
         }
 
-        /* AI Ghost NPC */
+        /* AI Ghost NPC positioning */
         #ghost-npc {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             cursor: pointer;
             opacity: 0.8;
+            z-index: 10000;
+            pointer-events: auto;
         }
 
-        #ghost-dialogue-box {
+        /* Fullscreen button styling */
+        .fullscreen-button {
             position: fixed;
             bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px 15px;
-            border-radius: 10px;
-            display: none;
-            font-family: 'Courier New', monospace;
-            max-width: 80%;
-            text-align: center;
-        }
-
-        @keyframes eye-pulse {
-            0%, 100% { transform: scale(0.98); opacity: 0.9; }
-            50% { transform: scale(1.02); opacity: 1; }
+            left: 20px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+            z-index: 10000;
         }
     </style>
 </head>
@@ -111,57 +65,34 @@
     <div id="viewer"></div>
 
     <!-- AI Ghost NPC -->
-    <img id="ghost-npc" src="ghost.png" width="100" alt="Ghost NPC">
+    <img id="ghost-npc" src="ghost.png" width="100" alt="Ghost NPC" style="display: none;">
     <div id="ghost-dialogue-box">
         <p id="ghost-dialogue">...</p>
     </div>
 
     <script>
-        let player;
-        let isInitialized = false;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('wallet-button').onclick = handleWalletConnection;
-            document.addEventListener("fullscreenchange", handleFullScreenChange);
-            document.getElementById("ghost-npc").addEventListener("click", interactWithGhost);
-        });
-
-        async function handleWalletConnection() {
-            try {
-                if (!window.ethereum && !window.WalletConnect) {
-                    throw new Error('No crypto wallet detected');
-                }
-
-                const provider = window.ethereum || await setupWalletConnect();
-                const accounts = await provider.request({ method: 'eth_requestAccounts' });
-                
-                await requestSignature(accounts[0]);
-                
-                if (!window.TDV) {
-                    throw new Error('Virtual tour engine failed to load');
-                }
-                
-                initializeTour();
-                fadeOutPreloader();
-                
-            } catch (error) {
-                alert(`Security Protocol Failed: ${error.message}`);
-                console.error('Connection Error:', error);
+        // Fullscreen handling
+        function handleFullScreen() {
+            const viewer = document.getElementById("viewer");
+            if (viewer.requestFullscreen) {
+                viewer.requestFullscreen();
+            } else if (viewer.mozRequestFullScreen) {
+                viewer.mozRequestFullScreen();
+            } else if (viewer.webkitRequestFullscreen) {
+                viewer.webkitRequestFullscreen();
+            } else if (viewer.msRequestFullscreen) {
+                viewer.msRequestFullscreen();
             }
+
+            // Refresh panorama after fullscreen change
+            setTimeout(() => {
+                if (player && player.setSize) {
+                    player.setSize(window.innerWidth, window.innerHeight);
+                }
+            }, 100);
         }
 
-        async function setupWalletConnect() {
-            throw new Error('WalletConnect initialization not implemented');
-        }
-
-        async function requestSignature(address) {
-            const message = `Authorize Virtual Access - ${Date.now()}`;
-            return window.ethereum.request({
-                method: 'personal_sign',
-                params: [message, address]
-            });
-        }
-
+        // Initialize tour with proper fullscreen handling
         function initializeTour() {
             if (isInitialized) return;
             
@@ -173,75 +104,78 @@
 
                 window.tdvplayer = player = TDV.PlayerAPI.create(settings);
                 isInitialized = true;
+
+                // Add fullscreen button handler
+                player.bind('click', (event) => {
+                    if (event.targetType === 'fullscreen') {
+                        handleFullScreen();
+                    }
+                });
+
+                // Show ghost NPC after tour loads
+                player.bind('stateChange', (event) => {
+                    if (event.name === 'begin') {
+                        document.getElementById("ghost-npc").style.display = "block";
+                    }
+                });
+
             } catch (error) {
                 console.error('TDV Initialization Error:', error);
                 alert('Virtual environment failed to initialize');
             }
         }
 
-        function fadeOutPreloader() {
-            const preloadContainer = document.getElementById('preloadContainer');
-            if (preloadContainer) {
-                preloadContainer.style.opacity = '0';
-                setTimeout(() => {
-                    preloadContainer.style.display = 'none';
-                }, 800);
-            }
-        }
-
-        function handleFullScreenChange() {
-            const viewer = document.getElementById("viewer");
-            if (document.fullscreenElement) {
-                viewer.classList.add("fullscreen");
-            } else {
-                viewer.classList.remove("fullscreen");
-            }
-        }
-
-        function goFullScreen() {
-            const viewer = document.getElementById("viewer");
-            if (viewer.requestFullscreen) {
-                viewer.requestFullscreen();
-            } else if (viewer.mozRequestFullScreen) {
-                viewer.mozRequestFullScreen();
-            } else if (viewer.webkitRequestFullscreen) {
-                viewer.webkitRequestFullscreen();
-            } else if (viewer.msRequestFullscreen) {
-                viewer.msRequestFullscreen();
-            }
-        }
-
+        // Improved AI interaction
         async function interactWithGhost() {
-            const aiResponse = await fetchGhostResponse();
-            document.getElementById("ghost-dialogue").innerText = aiResponse;
-            document.getElementById("ghost-dialogue-box").style.display = "block";
-
-            setTimeout(() => {
-                document.getElementById("ghost-dialogue-box").style.display = "none";
-            }, 5000);
-        }
-
-        async function fetchGhostResponse() {
             try {
-                const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer YOUR_OPENAI_API_KEY`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4",
-                        messages: [{ role: "system", content: "You are a ghost giving cryptic clues about the abandoned world." }]
-                    })
-                });
+                const dialogueBox = document.getElementById("ghost-dialogue-box");
+                dialogueBox.style.display = "block";
+                dialogueBox.style.opacity = "0";
+                
+                // Animate dialogue box
+                fadeIn(dialogueBox);
+                
+                const aiResponse = await fetchGhostResponse();
+                document.getElementById("ghost-dialogue").innerText = aiResponse;
 
-                const data = await response.json();
-                return data.choices[0].message.content;
+                setTimeout(() => {
+                    fadeOut(dialogueBox);
+                }, 5000);
+
             } catch (error) {
-                console.error("AI Error:", error);
-                return "I sense darkness ahead... Be careful!";
+                console.error("Ghost interaction failed:", error);
             }
         }
+
+        // Animation helpers
+        function fadeIn(element) {
+            let opacity = 0;
+            element.style.opacity = opacity;
+            const timer = setInterval(() => {
+                opacity += 0.1;
+                element.style.opacity = opacity;
+                if (opacity >= 1) clearInterval(timer);
+            }, 50);
+        }
+
+        function fadeOut(element) {
+            let opacity = 1;
+            const timer = setInterval(() => {
+                opacity -= 0.1;
+                element.style.opacity = opacity;
+                if (opacity <= 0) {
+                    clearInterval(timer);
+                    element.style.display = "none";
+                }
+            }, 50);
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            if (player && player.setSize) {
+                player.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
     </script>
 </body>
 </html>
